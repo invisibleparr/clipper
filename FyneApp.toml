@@ -1,0 +1,17 @@
+Description = "Trim and re-encode video clips without leaving your desktop"
+
+[Details]
+Icon = "Icon.png"
+Name = "Clipper"
+ID = "dev.local.clipper"
+Version = "0.1.0"
+Build = 4
+
+[CanOpen]
+MimeTypes = "video/*"
+
+[LinuxAndBSD]
+GenericName = "Video Clipper"
+Categories = ["AudioVideo", "Video", "AudioVideoEditing"]
+Comment = "Trim video clips without leaving your desktop"
+Keywords = ["video", "trim", "clip", "cut", "ffmpeg"]

@@ -18,6 +18,11 @@ also this project uses [ffmpeg](https://ffmpeg.org/) for all the heavy lifting, 
 - live file-size estimate encoded with your exact settings
 - export keeps the original audio codec when the container accepts it, otherwise re-encodes to aac
 
+## demo
+https://github.com/user-attachments/assets/6b937d77-834c-44bb-b740-998aee61c99b
+
+(the produced clips are at the end of the video)
+
 ## requirements
 
 - `ffmpeg` and `ffprobe` on your PATH (everything media shells out to)

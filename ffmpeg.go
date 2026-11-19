@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -27,19 +29,42 @@ func probeDuration(path string) (float64, error) {
 	return d, nil
 }
 
-// probeSize returns the width and height of the first video stream.
+// probeSize returns the display width and height of the first video stream.
+// A rotation display matrix (common in phone recordings) swaps them, because
+// ffmpeg's autorotate hands decoded frames to us already turned; scaling to
+// the stored size would squash portrait video into a landscape box.
 func probeSize(path string) (int, int) {
 	out, err := exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0",
-		"-show_entries", "stream=width,height", "-of", "csv=p=0", path).Output()
+		"-show_streams", "-of", "json", path).Output()
 	if err != nil {
 		return 0, 0
 	}
-	parts := strings.Split(strings.TrimSpace(string(out)), ",")
-	if len(parts) != 2 {
+	return parseStreamSize(out)
+}
+
+type probeStreams struct {
+	Streams []struct {
+		Width        int `json:"width"`
+		Height       int `json:"height"`
+		SideDataList []struct {
+			SideDataType string  `json:"side_data_type"`
+			Rotation     float64 `json:"rotation"`
+		} `json:"side_data_list"`
+	} `json:"streams"`
+}
+
+func parseStreamSize(out []byte) (int, int) {
+	var s probeStreams
+	if err := json.Unmarshal(out, &s); err != nil || len(s.Streams) == 0 {
 		return 0, 0
 	}
-	w, _ := strconv.Atoi(parts[0])
-	h, _ := strconv.Atoi(parts[1])
+	st := s.Streams[0]
+	w, h := st.Width, st.Height
+	for _, sd := range st.SideDataList {
+		if sd.SideDataType == "Display Matrix" && int(math.Round(sd.Rotation))%180 != 0 {
+			w, h = h, w // a quarter turn swaps the display dimensions
+		}
+	}
 	return w, h
 }
 

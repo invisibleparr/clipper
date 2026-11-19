@@ -681,6 +681,41 @@ func TestProbeHasVideo(t *testing.T) {
 	}
 }
 
+func TestParseStreamSize(t *testing.T) {
+	if w, h := parseStreamSize([]byte(`{"streams":[{"width":640,"height":360}]}`)); w != 640 || h != 360 {
+		t.Errorf("plain stream got %d,%d", w, h)
+	}
+	matrix := `{"streams":[{"width":1920,"height":1080,"side_data_list":[` +
+		`{"side_data_type":"Display Matrix","rotation":-90}]}]}`
+	if w, h := parseStreamSize([]byte(matrix)); w != 1080 || h != 1920 { // phone recording turned upright
+		t.Errorf("rotated stream got %d,%d", w, h)
+	}
+	flip := `{"streams":[{"width":640,"height":360,"side_data_list":[` +
+		`{"side_data_type":"Display Matrix","rotation":180}]}]}`
+	if w, h := parseStreamSize([]byte(flip)); w != 640 || h != 360 { // half turn keeps the box
+		t.Errorf("flipped stream got %d,%d", w, h)
+	}
+	if w, h := parseStreamSize([]byte(`{"streams":[]}`)); w != 0 || h != 0 {
+		t.Errorf("no streams got %d,%d", w, h)
+	}
+	if w, h := parseStreamSize([]byte(`junk`)); w != 0 || h != 0 {
+		t.Errorf("junk json got %d,%d", w, h)
+	}
+}
+
+func TestStartZeroSizeNoDeadlock(t *testing.T) {
+	p := newPlayer(30)
+	p.setPath(filepath.Join(t.TempDir(), "missing.mp4"), false) // probe fails -> zero size
+	p.seekFrame(0)                                              // used to poison the mutex here
+	done := make(chan struct{})
+	go func() { p.pause(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("player deadlocked after zero-size start")
+	}
+}
+
 func TestVolBtnStates(t *testing.T) {
 	u := &ui{volBtn: widget.NewButtonWithIcon("", theme.VolumeUpIcon(), func() {})}
 	u.updateVolBtn() // nothing loaded: calm and disabled, not scary red

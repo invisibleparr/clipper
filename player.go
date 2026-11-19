@@ -97,7 +97,8 @@ func (p *player) start(t float64, oneShot bool, stop float64) {
 	p.gen = gen
 	p.reapLocked() // stop previous stream before starting the next
 	if p.vw <= 0 || p.vh <= 0 {
-		return // unknown frame size, nothing to stream
+		p.mu.Unlock() // unknown frame size; never leave the mutex poisoned for later calls
+		return
 	}
 	w, h := p.vw, p.vh // capture under lock; readFrames must not reread (setPath may change them)
 	hasAudio := p.hasAudio
